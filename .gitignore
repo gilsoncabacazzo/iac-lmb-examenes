@@ -1,0 +1,16 @@
+# ==========================================
+# TERRAFORM LOCALES (Plugins y Estado local)
+# ==========================================
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
+
+# ==========================================
+# VARIABLES LOCALES Y SECRETOS
+# ==========================================
+# Ignora archivos de variables locales con secretos,
+# pero permite subir el de develop/pipeline si no tiene credenciales en duro.
+*.secret.tfvars
+*.local.tfvars
+/node_modules

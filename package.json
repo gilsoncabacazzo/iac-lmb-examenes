@@ -1,0 +1,23 @@
+{
+  "name": "lmb-pagos",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Lambda para la gestion de pago",
+  "main": "index.js",
+  "scripts": {
+    "lint": "eslint .",
+    "validate": "node --check index.mjs",
+    "ci": "npm run validate && npm run lint"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.0.0",
+    "@aws-sdk/lib-dynamodb": "^3.0.0",
+    "bcryptjs": "^2.4.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.5.0",
+    "eslint": "^9.5.0",
+    "eslint-plugin-import": "^2.32.0",
+    "globals": "^15.15.0"
+  }
+}
