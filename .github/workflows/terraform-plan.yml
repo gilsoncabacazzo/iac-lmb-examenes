@@ -2,7 +2,7 @@ name: "Terraform Plan"
 
 on:
   push:
-    branches: [ develops,mains]
+    branches: [ develop,mains]
   workflow_dispatch:
     
 permissions:
