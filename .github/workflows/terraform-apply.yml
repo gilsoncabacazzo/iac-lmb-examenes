@@ -1,0 +1,45 @@
+name: "Terraform Apply"
+
+on:
+  workflow_call: #
+    inputs:
+        tfvars_file:
+          required: true
+          type: string
+
+jobs:
+  terraform-apply:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'production' || github.ref_name }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        # 🆕 EL PASO NUEVO VA ACÁ:
+      - name: Descargar ZIPs generados en el Plan
+        uses: actions/download-artifact@v4
+        with:
+         name: lambda-packages
+         path: build/  # Los deja en la carpeta build/ para que Terraform los vea
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.ROLE_TO_ASSUME }}
+          aws-region: ${{ vars.AWS_REGION}}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.10.0"
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform apply
+        run: |
+          echo "🚀 Iniciando Terraform APPLY..."
+          terraform apply -auto-approve -input=false -var-file="${{ inputs.tfvars_file }}"
+        env:
+          TF_VAR_dynamodb_tables_json: ${{ vars.DYNAMODB_TABLES }}
+          TF_VAR_tabla_examenes: ${{ vars.TABLE_EXAMENES}}
+          TF_VAR_tabla_usuarios: ${{ vars.TABLE_USUARIOS}}

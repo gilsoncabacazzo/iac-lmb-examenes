@@ -1,0 +1,119 @@
+name: "Terraform Plan"
+
+on:
+  push:
+    branches: [ develops,mains]
+  workflow_dispatch:
+    
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  terraform-plan:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'production' || github.ref_name }}
+    outputs:
+      tfvars_file: ${{ steps.select-file.outputs.FILE_NAME }}
+      
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+            node-version: 20
+            cache: 'npm' # Optimiza las descargas futuras de node_modules
+
+        # 🆕 PASO 2: Instalar dependencias de la Lambda
+      - name: Instalar Dependencias
+        run: npm ci # 'npm ci' es más rápido y estricto que 'npm install' en entornos de CI
+
+        # 🆕 PASO 3: Validar Sintaxis de JavaScript
+      - name: Validar Sintaxis JS
+        run: npm run ci
+
+         # 🆕 PASO CLAVE: Construir la estructura para la Lambda Layer
+      - name: Construir Paquetes ZIP (Código y Layer)
+        run: |
+          sudo apt-get install -y zip
+          
+          # 1. Crear directorios limpios en la raíz absoluta
+          mkdir -p ${{ github.workspace }}/build/layer/nodejs
+          
+          # 2. Armar el ZIP de la Layer (Dependencias)
+          cp package.json ${{ github.workspace }}/build/layer/nodejs/
+          cd ${{ github.workspace }}/build/layer/nodejs
+          npm install --omit=dev
+          
+          cd ${{ github.workspace }}/build/layer
+          zip -r ${{ github.workspace }}/build/layer.zip nodejs/
+          
+          # 3. Armar el ZIP del Código (Volviendo siempre a la raíz)
+          cd ${{ github.workspace }}
+          zip ${{ github.workspace }}/build/lambda.zip index.mjs
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+            role-to-assume: ${{ secrets.ROLE_TO_ASSUME }}
+            aws-region:  ${{ vars.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.10.0"
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Seleccionar archivo tfvars dinámico
+        id: select-file
+        run: |
+          # Creamos un mapa asociativo en Bash para relacionar ramas con archivos tfvars
+          declare -A tfvars_map
+          tfvars_map[develop]="terraform.develop.tfvars"
+          tfvars_map[staging]="terraform.staging.tfvars"
+          tfvars_map[main]="terraform.production.tfvars"
+
+          # Capturamos la rama actual
+          BRANCH="${{ github.ref_name }}"
+
+          # Validamos si la rama existe en nuestro mapa, si no, usamos develop por defecto
+          if [ -n "${tfvars_map[$BRANCH]}" ]; then
+            FILE_NAME="${tfvars_map[$BRANCH]}"
+          else
+            FILE_NAME="terraform.develop.tfvars"
+          fi
+
+          echo "FILE_NAME=$FILE_NAME" >> $GITHUB_OUTPUT
+
+      # Genera el plan binario seguro
+      - name: Terraform Plan
+        run: |
+          terraform plan \
+          -input=false \
+          -var-file="${{ steps.select-file.outputs.FILE_NAME }}" \
+          -out=tfplan
+        env:
+          TF_VAR_dynamodb_tables_json: ${{ vars.DYNAMODB_TABLES }}
+          TF_VAR_tabla_examenes: ${{ vars.TABLE_EXAMENES}}
+          TF_VAR_tabla_usuarios: ${{ vars.TABLE_USUARIOS}}
+ 
+      - name: Guardar ZIPs para el Apply
+        uses: actions/upload-artifact@v4
+        with:
+         name: lambda-packages
+         path: build/*.zip
+
+  trigger-apply:
+    needs: terraform-plan # 🚀 Obliga a que el plan termine de forma exitosa primero
+    uses: ./.github/workflows/terraform-apply.yml # Llama al archivo del Apply
+    with:
+      # 🚀 Le pasamos el resultado del paso anterior al Apply como un input limpio
+      tfvars_file: ${{ needs.terraform-plan.outputs.tfvars_file }}
+    secrets: inherit # Pasa los secretos del entorno correspondiente
