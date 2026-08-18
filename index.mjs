@@ -22,13 +22,15 @@ export const handler = async (event) => {
     
     // Normalizar headers a minúsculas
     const headers = event.headers || {};
-    const normalizedHeaders = Object.keys(headers).reduce((acc, key) => {
-      acc[key.toLowerCase()] = headers[key];
-      return acc;
-    }, {});
-
-    const consultorio_id = normalizedHeaders['x-consultorio_id'];
-    const usuario_id = normalizedHeaders['x-usuario_id'];
+    const consultorio_id =
+      headers["consultorio_id"] ||
+      headers["Consultorio_Id"] ||
+      headers["CONSULTORIO_ID"] ||
+      headers["x-consultorio-id"];
+    const usuario_id =
+      headers["x-usuario-id"] ||
+      headers["X-Usuario-Id"] ||
+      headers["X-USUARIO-ID"];
 
     if (!consultorio_id) {
       return response(400, { error: "El header 'consultorio_id' es obligatorio." });
