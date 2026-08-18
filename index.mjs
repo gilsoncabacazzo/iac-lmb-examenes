@@ -27,8 +27,8 @@ export const handler = async (event) => {
       return acc;
     }, {});
 
-    const consultorio_id = normalizedHeaders['consultorio_id'];
-    const usuario_id = normalizedHeaders['usuario_id'];
+    const consultorio_id = normalizedHeaders['x-consultorio_id'];
+    const usuario_id = normalizedHeaders['x-usuario_id'];
 
     if (!consultorio_id) {
       return response(400, { error: "El header 'consultorio_id' es obligatorio." });
