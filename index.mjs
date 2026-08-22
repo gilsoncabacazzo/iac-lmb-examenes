@@ -56,10 +56,10 @@ export const handler = async (event) => {
         }
 
       case "PUT":
-        if (!pathParameters.examen_id) {
-          return response(400, { error: "Se requiere el 'examen_id' en la ruta para actualizar." });
+        if (!pathParameters.id) {
+          return response(400, { error: "Se requiere el 'id' en la ruta para actualizar." });
         }
-        return await actualizarExamen(pathParameters.examen_id, body, consultorio_id);
+        return await actualizarExamen(pathParameters.id, body, consultorio_id);
 
       default:
         return response(405, { error: `Método ${httpMethod} no permitido.` });
@@ -151,10 +151,10 @@ async function obtenerExamenesPorTurno(turnoId, consultorioId) {
   }
 }
 
-async function actualizarExamen(examen_id, data, consultorio_id) {
+async function actualizarExamen(id, data, consultorio_id) {
   const existing = await docClient.send(new GetCommand({
     TableName: TABLE_NAME,
-    Key: { examen_id }
+    Key: { "examen_id":id }
   }));
 
   if (!existing.Item) {
@@ -169,7 +169,7 @@ async function actualizarExamen(examen_id, data, consultorio_id) {
 
   const result = await docClient.send(new UpdateCommand({
     TableName: TABLE_NAME,
-    Key: { examen_id },
+    Key: { "examen_id":id },
     UpdateExpression: "SET estudios = :e, estado = :st, archivo_url = :url, fecha_actualizacion = :f",
     ExpressionAttributeValues: {
       ":e": data.estudios || existing.Item.estudios,
