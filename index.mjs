@@ -46,10 +46,13 @@ export const handler = async (event) => {
         return await crearExamen(body, consultorio_id, usuario_id);
 
       case "GET":
-        if (pathParameters.examen_id) {
-          return await obtenerExamenPorId(pathParameters.examen_id, consultorio_id);
-        } else {
-          return await listarExamenesPorConsultorio(consultorio_id);
+        switch (event.resource) {
+          case "/examenes/{id}":
+            return await obtenerExamenPorId(pathParameters.id, consultorio_id);
+          case "/turnos/{id}/receta":
+            return await obtenerExamenesPorTurno(pathParameters.id, consultorio_id);
+          default:
+            return response(404, { error: "Ruta no encontrada." });
         }
 
       case "PUT":
@@ -85,7 +88,7 @@ async function crearExamen(data, consultorio_id, usuario_id) {
     examen_id,
     consultorio_id, // Atributo clave para el GSI
     usuario_id: usuario_id || "sistema",
-    turno_id: data.turno_id || null,
+    turno_id: data.reserva_id || null,
     paciente_id: data.paciente_id || null,
     estudios,
     estado: "PENDIENTE", // PENDIENTE o COMPLETADO
@@ -119,17 +122,33 @@ async function obtenerExamenPorId(examen_id, consultorio_id) {
   return response(200, { data: result.Item });
 }
 
-async function listarExamenesPorConsultorio(consultorio_id) {
-  const result = await docClient.send(new QueryCommand({
-    TableName: TABLE_NAME,
-    IndexName: "consultorio_id",
-    KeyConditionExpression: "consultorio_id = :cid",
-    ExpressionAttributeValues: {
-      ":cid": consultorio_id
-    }
-  }));
+async function obtenerExamenesPorTurno(turnoId, consultorioId) {
+  try {
+    const params = {
+      TableName: TABLE_NAME, // Asegúrate de tener esta variable con el nombre de tu tabla
+      IndexName: "reserva-id-index", // Nombre exacto de tu GSI en DynamoDB
+      KeyConditionExpression: "turno_id = :turnoId",
+      ExpressionAttributeValues: {
+        ":turnoId": turnoId,
+      },
+    };
 
-  return response(200, { data: result.Items || [] });
+    const command = new QueryCommand(params);
+    const result = await docClient.send(command);
+
+    // Como un turno tiene una sola receta, evaluamos si existe algún elemento
+    const examenes = result.Items && result.Items.length > 0 ? result.Items[0] : null;
+
+    // Opcional: Si quieres validar también por seguridad que pertenezca al consultorio actual
+    if (examenes && examenes.consultorio_id !== consultorioId) {
+      return response(404, { error: "Examen no encontrado para este consultorio." });
+    }
+
+    return response(200, examenes); // Retorna la receta o 'null' si aún no fue creada
+  } catch (error) {
+    console.error("Error al obtener la examenes por turno:", error);
+    return response(500, { error: "Error interno al consultar el examenes." });
+  }
 }
 
 async function actualizarExamen(examen_id, data, consultorio_id) {

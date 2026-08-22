@@ -38,4 +38,7 @@ variable "runtime" {
   description = "runtime de la lambda"
   default = "nodejs22.x"
 }
+variable "lambda_memory" {
+  type = number
+}
 
