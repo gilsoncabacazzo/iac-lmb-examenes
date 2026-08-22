@@ -154,7 +154,7 @@ async function obtenerExamenesPorTurno(turnoId, consultorioId) {
 async function actualizarExamen(id, data, consultorio_id) {
   const existing = await docClient.send(new GetCommand({
     TableName: TABLE_NAME,
-    Key: { "examen_id":id }
+    Key: { "examen_id":id,"createdAt":data.createdAt }
   }));
 
   if (!existing.Item) {
