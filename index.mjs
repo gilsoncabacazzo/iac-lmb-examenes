@@ -169,7 +169,7 @@ async function actualizarExamen(id, data, consultorio_id) {
 
   const result = await docClient.send(new UpdateCommand({
     TableName: TABLE_NAME,
-    Key: { "examen_id":id },
+    Key: { "examen_id":id,"createdAt":data.createdAt },
     UpdateExpression: "SET estudios = :e, estado = :st, archivo_url = :url, fecha_actualizacion = :f",
     ExpressionAttributeValues: {
       ":e": data.estudios || existing.Item.estudios,
