@@ -49,7 +49,7 @@ export const handler = async (event) => {
         switch (event.resource) {
           case "/examenes/{id}":
             return await obtenerExamenPorId(pathParameters.id, consultorio_id);
-          case "/turnos/{id}/receta":
+          case "/examenes/{id}/receta":
             return await obtenerExamenesPorTurno(pathParameters.id, consultorio_id);
           default:
             return response(404, { error: "Ruta no encontrada." });
